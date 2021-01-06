@@ -1,0 +1,244 @@
+/* ----------------------User code--------------------*/
+
+package src;
+import java.util.*;
+import java.util.ArrayList;
+
+   
+/* ------------Grammar symbol declarations----------- */
+   
+terminal    PLUS, MINUS, TIMES, DIVIDE, MOD, EQ, NOPRINT, PRINT, SEMI, LPAREN, RPAREN, AND, OR, LT, GT, LTE, GTE,
+            EQUAL, NOTEQUAL, INT, KIR, FLOAT, CHAR, STRING, BOOLEAN, LCURLY, RCURLY, IF, ELSE, ELSEIF, WHILE, 
+            DO,EXP;
+
+terminal String ID;
+
+terminal Integer    INTEGER_LITERAL;
+terminal Float      FLOAT_LITERAL;
+terminal Character  CHAR_LITERAL;
+terminal String     STRING_LITERAL;
+terminal Boolean    BOOLEAN_LITERAL;
+
+non terminal program;
+non terminal Expr    expr, math, factor, term, logic, zerm;
+non terminal Stmt    statement;
+non terminal Stmt    noprint, print, declare, define, ifthen, ifelse, assign, while, dowhile;
+non terminal ArrayList<Stmt>  statement_list;
+non terminal ArrayList<ElseBlock> else_list;
+
+/* Precedences */
+precedence left PLUS, MINUS;
+precedence left TIMES, DIVIDE;
+precedence left AND, OR;
+   
+/* ------------Grammar rules----------- */
+
+/*program   ::= expr:e {: System.out.println("Evaluation results = " + e); :};*/
+
+/*program   ::= statement:s {: s.execute(); :};*/
+
+program     ::= statement_list:sl
+            {:      RESULT = sl;
+/*                    System.out.println("");
+                    Memory.memory.clear();
+
+                    System.out.println("----------------- PREFIX OF THE PROGRAM -----------------");
+                    for (Stmt s : sl){
+                        s.execute_prefix();
+
+                    }
+
+                    System.out.println();
+                    System.out.println("----------------- OUTPUT OF THE PROGRAM -----------------");
+                    for (Stmt s : sl){
+                        s.execute();
+                    }
+*/
+            :};
+
+statement_list  ::= statement_list:sl statement:s
+                {: 
+                    sl.add(s);
+                    RESULT = sl;
+                :}
+                | statement:s
+                {: 
+                    ArrayList<Stmt> sl;
+                    sl = new ArrayList<Stmt>();
+                    sl.add(s);
+                    RESULT = sl;
+                :};
+
+statement ::= print:p SEMI
+                {: RESULT = p; :}
+            | noprint:n SEMI
+                {: RESULT = n; :}
+            | declare:d SEMI
+                {: RESULT = d; :}
+            | define:d SEMI
+                {: RESULT = d; :}
+            | ifthen:i SEMI
+                {: RESULT = i; :}
+            | ifelse:i SEMI
+                {: RESULT = i; :}
+            | assign:a SEMI
+                {: RESULT = a; :}
+            | while:w SEMI
+                {: RESULT = w; :}
+            | dowhile:d SEMI
+                {: RESULT = d; :};
+     
+noprint ::= NOPRINT LPAREN expr:e RPAREN 
+                {: 
+                    System.out.println("Hello from NOPRINT");
+                    RESULT = Stmt.noprint(e); 
+                :}
+            | NOPRINT LPAREN RPAREN
+                {:  
+                    RESULT = Stmt.noprint();
+                :};          
+   
+print ::= PRINT expr:e {: RESULT = Stmt.print(e); :};
+
+
+declare   ::= INT ID:id
+                {: RESULT = Stmt.declare_int(id);  :}
+            | FLOAT ID:id
+                {: RESULT = Stmt.declare_float(id);  :}
+            | STRING ID:id
+                {: RESULT = Stmt.declare_string(id);  :}
+            | CHAR ID:id
+                {: RESULT = Stmt.declare_char(id);  :}
+            | BOOLEAN ID:id
+                {: RESULT = Stmt.declare_boolean(id);  :}
+            | KIR ID:id
+                {: RESULT = Stmt.declare_kir(id); :};
+
+define  ::= INT ID:id EQ expr:e
+                {: RESULT = Stmt.define_int(id, e); :}
+            | FLOAT ID:id EQ expr:e
+                {: RESULT = Stmt.define_float(id, e); :}
+            | CHAR ID:id EQ expr:e
+                {: RESULT = Stmt.define_char(id, e); :}
+            | STRING ID:id EQ expr:e
+                {: RESULT = Stmt.define_string(id, e); :}
+            | BOOLEAN ID:id EQ expr:e
+                {: RESULT = Stmt.define_boolean(id, e); :};
+
+
+assign  ::= ID:id EQ expr:e
+                {: RESULT = Stmt.assign(id, e); :};
+
+ifthen      ::= IF expr:e LCURLY statement_list:sl RCURLY
+            {: RESULT = Stmt.ifthen(e, sl); :};
+
+
+ifelse      ::= IF expr:e LCURLY statement_list:sl RCURLY else_list:el
+            {:
+                RESULT = Stmt.ifelse(e, sl, el);
+            :};
+
+else_list   ::= else_list:el ELSE LCURLY statement_list:sl RCURLY
+                    {:
+                        ElseBlock block = new ElseBlock(sl);
+                        el.add(block);
+                        RESULT = el;
+                    :}
+                | else_list:el ELSEIF expr:e LCURLY statement_list:sl RCURLY
+                    {:
+                        ElseBlock block = new ElseBlock(e, sl);
+                        el.add(block);
+                        RESULT = el;
+                    :}
+                | ELSEIF expr:e LCURLY statement_list:sl RCURLY
+                    {:
+                        ElseBlock block = new ElseBlock(e, sl);
+                        ArrayList<ElseBlock> block_list;
+                        block_list = new ArrayList<ElseBlock>();
+                        block_list.add(block);
+                        RESULT = block_list;
+                    :}
+                | ELSE LCURLY statement_list:sl RCURLY
+                    {: 
+                        ElseBlock block = new ElseBlock(sl);
+                        ArrayList<ElseBlock> block_list;
+                        block_list = new ArrayList<ElseBlock>();
+                        block_list.add(block);
+                        RESULT = block_list;
+                    :};
+
+while       ::= WHILE expr:e LCURLY statement_list:sl RCURLY
+                    {:
+                        RESULT = Stmt.while_s(e, sl);
+                    :};
+
+dowhile     ::= DO LCURLY statement_list:sl RCURLY WHILE expr:e
+                    {:
+                        RESULT = Stmt.dowhile_s(e, sl);
+                    :};
+
+expr        ::= math:m
+                    {: RESULT = m; :}
+                | logic:l
+                    {: RESULT = l; :};
+
+math        ::= math:m PLUS factor:f
+                    {: RESULT = new Expr(m, f, sym.PLUS); :}
+                | math:m MINUS factor:f
+                    {: RESULT = new Expr(m, f, sym.MINUS); :}
+                | factor:f
+                    {: RESULT = f; :};
+
+
+factor      ::= factor:f TIMES term:t
+                    {: RESULT = new Expr(f, t, sym.TIMES); :}
+                | factor:f DIVIDE term:t
+                    {: RESULT = new Expr(f, t, sym.DIVIDE); :}
+                | factor:f MOD term:t
+                    {: RESULT = new Expr(f, t, sym.MOD); :}
+                | term:t
+                    {: RESULT = t; :};
+
+
+logic       ::= term:t1 AND term:t2
+                    {: RESULT = new Expr(t1, t2, sym.AND); :}
+                | term:t1 OR term:t2
+                    {: RESULT = new Expr(t1, t2, sym.OR); :}
+                | term:t1 LT term:t2
+                    {: RESULT = new Expr(t1, t2, sym.LT); :}
+                | term:t1 GT term:t2
+                    {: RESULT = new Expr(t1, t2, sym.GT); :}
+                | term:t1 LTE term:t2
+                    {: RESULT = new Expr(t1, t2, sym.LTE); :}
+                | term:t1 GTE term:t2
+                    {: RESULT = new Expr(t1, t2, sym.GTE); :}
+                | term:t1 EQUAL term:t2
+                    {: RESULT = new Expr(t1, t2, sym.EQUAL); :}
+                | term:t1 NOTEQUAL term:t2
+                    {: RESULT = new Expr(t1, t2, sym.NOTEQUAL); :};
+
+
+term        ::= zerm:z EXP term:t
+                    {: RESULT = new Expr(z, t, sym.EXP); :}
+                | zerm:z
+                    {: RESULT = z; :};
+
+
+zerm        ::= LPAREN expr:e RPAREN
+                    {: RESULT = e; :}
+                | INTEGER_LITERAL:i
+                    {: RESULT = new Expr(i); :}
+                | MINUS INTEGER_LITERAL:i
+                    {: RESULT = new Expr(-i); :}
+                | FLOAT_LITERAL:f
+                    {: RESULT = new Expr(f); :}
+                | MINUS FLOAT_LITERAL:f
+                    {: RESULT = new Expr(-f); :}
+                | CHAR_LITERAL:c
+                    {: RESULT = new Expr(c); :}
+                | STRING_LITERAL:s
+                    {: RESULT = new Expr(s); :}
+                | BOOLEAN_LITERAL:b
+                    {: RESULT = new Expr(b); :}
+                | ID:id
+                    {: RESULT = new Expr("id", id); :};
